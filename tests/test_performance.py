@@ -1,11 +1,16 @@
+"""
+Unit test for performance
+"""
+
 import unittest
 import time
 import random
+from datetime import datetime, timedelta, timezone
+from sqlalchemy import text
+
 from subly import create_app, db
 from subly.models import User, SubscriptionPlan, UserSubscription
 from subly.utils import init_subscription_plans
-from datetime import datetime, timedelta
-from sqlalchemy import text
 
 
 class TestQueryPerformance(unittest.TestCase):
@@ -65,7 +70,7 @@ class TestQueryPerformance(unittest.TestCase):
                 days_ago = random.randint(0, 365)
                 duration = random.randint(28, 365)
 
-                start_date = datetime.utcnow() - timedelta(days=days_ago)
+                start_date = datetime.now(timezone.utc) - timedelta(days=days_ago)
                 end_date = start_date + timedelta(days=duration)
 
                 # Only make recent subscriptions active
@@ -106,7 +111,7 @@ class TestQueryPerformance(unittest.TestCase):
                 UserSubscription.query.filter_by(user_id=user_id, is_active=True)
                 .filter(
                     (UserSubscription.end_date == None)
-                    | (UserSubscription.end_date > datetime.utcnow())
+                    | (UserSubscription.end_date > datetime.now(timezone.utc))
                 )
                 .first()
             )
@@ -132,17 +137,15 @@ class TestQueryPerformance(unittest.TestCase):
         # Measure optimized raw SQL query
         start_time = time.time()
         for _ in range(50):
-            subscriptions, total = UserSubscription.get_subscription_history(
-                user_id, page, per_page
-            )
+            UserSubscription.get_subscription_history(user_id, page, per_page)
         optimized_time = (time.time() - start_time) / 50
 
         # Measure standard ORM query
         start_time = time.time()
         for _ in range(50):
             query = UserSubscription.query.filter_by(user_id=user_id)
-            total = query.count()
-            subscriptions = (
+            query.count()
+            (
                 query.order_by(UserSubscription.created_at.desc())
                 .limit(per_page)
                 .offset((page - 1) * per_page)
@@ -150,7 +153,7 @@ class TestQueryPerformance(unittest.TestCase):
             )
         orm_time = (time.time() - start_time) / 50
 
-        print(f"\nSubscription History Query Performance:")
+        print("\nSubscription History Query Performance:")
         print(
             f"Dataset: {self.user_count} users, {self.subscription_count} subscriptions"
         )
@@ -173,8 +176,8 @@ class TestQueryPerformance(unittest.TestCase):
         subscription = UserSubscription(
             user_id=test_user.id,
             plan_id=plan.id,
-            start_date=datetime.utcnow() - timedelta(days=10),
-            end_date=datetime.utcnow() + timedelta(days=20),
+            start_date=datetime.now(timezone.utc) - timedelta(days=10),
+            end_date=datetime.now(timezone.utc) + timedelta(days=20),
             is_active=True,
         )
         db.session.add(subscription)
@@ -185,7 +188,7 @@ class TestQueryPerformance(unittest.TestCase):
         for _ in range(10):
             # Reset subscription state
             subscription.is_active = True
-            subscription.end_date = datetime.utcnow() + timedelta(days=20)
+            subscription.end_date = datetime.now(timezone.utc) + timedelta(days=20)
             db.session.commit()
 
             # Cancel using optimized method
@@ -197,7 +200,7 @@ class TestQueryPerformance(unittest.TestCase):
         for _ in range(10):
             # Reset subscription state
             subscription.is_active = True
-            subscription.end_date = datetime.utcnow() + timedelta(days=20)
+            subscription.end_date = datetime.now(timezone.utc) + timedelta(days=20)
             db.session.commit()
 
             # Cancel using standard ORM approach
@@ -205,18 +208,18 @@ class TestQueryPerformance(unittest.TestCase):
                 UserSubscription.query.filter_by(user_id=test_user.id, is_active=True)
                 .filter(
                     (UserSubscription.end_date == None)
-                    | (UserSubscription.end_date > datetime.utcnow())
+                    | (UserSubscription.end_date > datetime.now(timezone.utc))
                 )
                 .first()
             )
 
             if active_sub:
                 active_sub.is_active = False
-                active_sub.end_date = datetime.utcnow()
+                active_sub.end_date = datetime.now(timezone.utc)
                 db.session.commit()
         orm_time = (time.time() - start_time) / 10
 
-        print(f"\nCancel Subscription Performance:")
+        print("\nCancel Subscription Performance:")
         print(f"Optimized raw SQL update: {optimized_time:.6f} seconds")
         print(f"Standard ORM update: {orm_time:.6f} seconds")
         print(f"Performance improvement: {(orm_time/optimized_time):.2f}x faster")
@@ -244,7 +247,7 @@ class TestQueryPerformance(unittest.TestCase):
 
         explain_result = db.session.execute(
             text(f"EXPLAIN QUERY PLAN {active_sql}"),
-            {"user_id": user_id, "current_date": datetime.utcnow()},
+            {"user_id": user_id, "current_date": datetime.now(timezone.utc)},
         ).fetchall()
 
         print("\nQuery Execution Plan for Active Subscription:")

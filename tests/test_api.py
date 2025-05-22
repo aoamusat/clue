@@ -5,7 +5,7 @@ Unit tests for the Subly API
 import unittest
 import json
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from subly import create_app, db
 from subly.models import User, UserSubscription
@@ -80,12 +80,13 @@ class TestAPI(unittest.TestCase):
         response = self.client.get("/api/subscriptions/plans")
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.data)
-        self.assertEqual(len(data), 3)  # We created 3 default plans
+        self.assertEqual(len(data), 4)  # We created 3 default plans
 
         # Verify plans are sorted by price
-        self.assertEqual(data[0]["name"], "Free")
-        self.assertEqual(data[1]["name"], "Basic")
+        self.assertEqual(data[0]["name"], "Sandbox")
+        self.assertEqual(data[1]["name"], "Startup")
         self.assertEqual(data[2]["name"], "Pro")
+        self.assertEqual(data[3]["name"], "Enterprise")
 
     def test_subscribe_and_get_active(self):
         """Test subscribing to a plan and getting active subscription"""
@@ -117,7 +118,7 @@ class TestAPI(unittest.TestCase):
         # Get a plan ID
         response = self.client.get("/api/subscriptions/plans")
         plans = json.loads(response.data)
-        basic_plan_id = next(plan["id"] for plan in plans if plan["name"] == "Basic")
+        basic_plan_id = next(plan["id"] for plan in plans if plan["name"] == "Sandbox")
 
         # Subscribe to plan
         self.client.post(
@@ -145,7 +146,7 @@ class TestAPI(unittest.TestCase):
         # Get plan IDs
         response = self.client.get("/api/subscriptions/plans")
         plans = json.loads(response.data)
-        basic_plan_id = next(plan["id"] for plan in plans if plan["name"] == "Basic")
+        basic_plan_id = next(plan["id"] for plan in plans if plan["name"] == "Sandbox")
         pro_plan_id = next(plan["id"] for plan in plans if plan["name"] == "Pro")
 
         # Subscribe to basic plan
@@ -176,7 +177,7 @@ class TestAPI(unittest.TestCase):
         # Get plan IDs
         response = self.client.get("/api/subscriptions/plans")
         plans = json.loads(response.data)
-        basic_plan_id = next(plan["id"] for plan in plans if plan["name"] == "Basic")
+        basic_plan_id = next(plan["id"] for plan in plans if plan["name"] == "Sandbox")
         pro_plan_id = next(plan["id"] for plan in plans if plan["name"] == "Pro")
 
         # Create multiple subscriptions
@@ -188,9 +189,11 @@ class TestAPI(unittest.TestCase):
             subscription = UserSubscription(
                 user_id=self.test_user.id,
                 plan_id=plan_id,
-                start_date=datetime.utcnow() - timedelta(days=30 * (5 - i)),
+                start_date=datetime.now(timezone.utc) - timedelta(days=30 * (5 - i)),
                 end_date=(
-                    datetime.utcnow() - timedelta(days=30 * (4 - i)) if i < 4 else None
+                    datetime.now(timezone.utc) - timedelta(days=30 * (4 - i))
+                    if i < 4
+                    else None
                 ),
                 is_active=i == 4,  # Only the last one is active
             )
@@ -243,7 +246,7 @@ class TestAPI(unittest.TestCase):
                 )
                 .filter(
                     (UserSubscription.end_date == None)
-                    | (UserSubscription.end_date > datetime.utcnow())
+                    | (UserSubscription.end_date > datetime.now(timezone.utc))
                 )
                 .first()
             )
@@ -268,7 +271,7 @@ class TestAPI(unittest.TestCase):
         user_id = self.test_user.id
         for i in range(100):
             plan_id = plan_ids[i % len(plan_ids)]
-            start_date = datetime.utcnow() - timedelta(days=i * 10)
+            start_date = datetime.now(timezone.utc) - timedelta(days=i * 10)
             end_date = start_date + timedelta(days=30) if i > 0 else None
 
             subscription = UserSubscription(
