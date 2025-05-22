@@ -8,7 +8,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import Index, text
 from sqlalchemy.ext.hybrid import hybrid_property
 
-from subly import db
+from subly.extensions import db
 
 
 class User(db.Model):
@@ -22,7 +22,9 @@ class User(db.Model):
     username = db.Column(db.String(64), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password = db.Column(db.String(256), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow())
+    created_at = db.Column(
+        db.DateTime, default=datetime.datetime.now(datetime.timezone.utc)
+    )
 
     # Create indexes for frequently queried fields
     __table_args__ = (
@@ -70,11 +72,15 @@ class UserSubscription(db.Model):
         db.Integer, db.ForeignKey("subscription_plans.id"), nullable=False
     )
     start_date = db.Column(
-        db.DateTime, default=datetime.datetime.utcnow(), nullable=False
+        db.DateTime,
+        default=datetime.datetime.now(datetime.timezone.utc),
+        nullable=False,
     )
     end_date = db.Column(db.DateTime, nullable=True)  # Null means active/ongoing
     is_active = db.Column(db.Boolean, default=True, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow())
+    created_at = db.Column(
+        db.DateTime, default=datetime.datetime.now(datetime.timezone.utc)
+    )
 
     # Relationships
     user = db.relationship("User", backref=db.backref("subscriptions", lazy="dynamic"))
@@ -93,7 +99,7 @@ class UserSubscription(db.Model):
         """Check if the subscription is expired"""
         if not self.end_date:
             return False
-        return self.end_date < datetime.datetime.utcnow()
+        return self.end_date < datetime.datetime.now(datetime.timezone.utc)
 
     @classmethod
     def get_active_subscription(cls, user_id):
@@ -114,7 +120,11 @@ class UserSubscription(db.Model):
         )
 
         result = db.session.execute(
-            sql, {"user_id": user_id, "current_date": datetime.datetime.utcnow()}
+            sql,
+            {
+                "user_id": user_id,
+                "current_date": datetime.datetime.now(datetime.timezone.utc),
+            },
         ).fetchone()
 
         return result
@@ -160,7 +170,7 @@ class UserSubscription(db.Model):
         Optimized query to cancel a user's active subscription.
         Using direct SQL UPDATE for better performance on large datasets.
         """
-        now = datetime.datetime.utcnow()
+        now = datetime.datetime.now(datetime.timezone.utc)
 
         sql = text(
             """

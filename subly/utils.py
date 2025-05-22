@@ -3,8 +3,11 @@ Utility functions for Subly application.
 """
 
 from sqlalchemy import text
-from subly import db
+from subly.extensions import db
 from subly.models import SubscriptionPlan
+from subly.logger import get_logger
+
+logger = get_logger()
 
 
 def init_subscription_plans():
