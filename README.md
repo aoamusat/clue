@@ -40,14 +40,17 @@ This API implements several SQL optimization techniques:
 
 ### Using Docker
 
-1. Build the Docker image & run the container:
+1. Build the Docker image:
    ```
-   docker build -f Dockerfile -t getclue/subly:latest . && docker run -p 5020:5000 --env FLASK_APP=subly --env FLASK_ENV=development --env JWT_ACCESS_TOKEN_EXPIRES=3600 --env JWT_SECRET_KEY=secret --env SQLALCHEMY_DATABASE_URI=mysql+pymysql://username:password@db_host/db_name --env DEBUG=0 --name subly-app getclue/subly:latest 
+   docker build -f Dockerfile -t getclue/subly:latest . 
    ```
+2. Run the container image
+   ```
+   docker run -p 5020:5000 --env FLASK_APP=subly --env FLASK_ENV=development --env JWT_ACCESS_TOKEN_EXPIRES=3600 --env JWT_SECRET_KEY=secret --env APP_ADMIN_PASSWORD=admin12345 --env SQLALCHEMY_DATABASE_URI=mysql+pymysql://username:password@db_host/db_name --env DEBUG=0 getclue/subly:latest
+   ```
+3. The API will be available at `http://localhost:5020`
 
-2. The API will be available at `http://localhost:5020`
-
-### Using Virtual Environment
+### Alternatively Using Virtual Environment
 
 1. Create a virtual environment:
    ```
@@ -62,13 +65,19 @@ This API implements several SQL optimization techniques:
    ```
    pip install -r requirements.txt
    ```
+4. Setup environment variables: See the sample `.env.example` file.
+5. Run database migration & seeding
+   ```
+   flask db upgrade
+   flask db-seed
+   ```
 
-4. Run the application:
+6. Run the application:
    ```
    flask --app subly run --debug
    ```
 
-5. The API will be available at `http://localhost:5000`
+7. The API will be available at `http://localhost:5000`
 
 ## Running Tests
 
