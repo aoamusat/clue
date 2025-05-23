@@ -11,7 +11,7 @@ COPY . .
 RUN mkdir -p instance
 
 # Set environment variables
-ENV FLASK_APP=main.py
+ENV FLASK_APP=subly
 ENV FLASK_ENV=production
 
 # Expose port for the application

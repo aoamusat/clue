@@ -1,7 +1,9 @@
 astroid==3.3.10
 black==25.1.0
 blinker==1.9.0
+cffi==1.17.1
 click==8.2.1
+cryptography==45.0.2
 dill==0.4.0
 Flask==3.1.1
 Flask-JWT-Extended==4.7.1
@@ -19,6 +21,7 @@ mypy_extensions==1.1.0
 packaging==25.0
 pathspec==0.12.1
 platformdirs==4.3.8
+pycparser==2.22
 PyJWT==2.10.1
 pylint==3.3.7
 PyMySQL==1.1.1
