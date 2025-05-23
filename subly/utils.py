@@ -2,12 +2,54 @@
 Utility functions for Subly application.
 """
 
+from functools import wraps
+import os
+from flask import jsonify
+from flask_jwt_extended import get_jwt, verify_jwt_in_request
 from sqlalchemy import text
 from subly.extensions import db
-from subly.models import SubscriptionPlan
+from subly.models import SubscriptionPlan, User
 from subly.logger import get_logger
 
 logger = get_logger()
+
+
+def admin_required(fn):
+    """
+    Decorator to check if the user is an admin.
+    If not, raises a 403 Forbidden error.
+    """
+
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        verify_jwt_in_request()
+        claims = get_jwt()
+        if claims.get("role", "user") != "admin":
+            return (
+                jsonify({"message": "You are not authorized to perform this action."}),
+                403,
+            )
+        return fn(*args, **kwargs)
+
+    return wrapper
+
+
+def create_admin_user():
+    """Create an admin user if it doesn't exist."""
+
+    admin_user = User.query.filter_by(username="admin").first()
+    if not admin_user:
+        admin_user = User(
+            username="admin",
+            email="admin@subly.io",
+            role="admin",
+        )
+        admin_user.set_password(os.environ.get("APP_ADMIN_PASSWORD", "admin12345"))
+        db.session.add(admin_user)
+        db.session.commit()
+        logger.info("✅ Admin user created successfully.")
+    else:
+        logger.info("⚠️ Admin user already exists. No action taken.")
 
 
 def init_subscription_plans():

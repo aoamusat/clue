@@ -25,8 +25,9 @@ class User(db.Model):
     created_at = db.Column(
         db.DateTime, default=datetime.datetime.now(datetime.timezone.utc)
     )
+    role = db.Column(db.String(20), default="user")  # e.g., user, admin, etc.
 
-    # Create indexes for frequently queried fields
+    # Create indexes for username/email for faster lookups
     __table_args__ = (
         Index("idx_user_email", "email"),
         Index("idx_user_username", "username"),

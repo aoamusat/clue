@@ -1,4 +1,4 @@
-# Optimized Subscription Management API
+# Subly: A Subscription Management API
 
 A RESTful API using Flask and SQLAlchemy for managing user subscriptions with a focus on SQL query optimization and performance.
 
@@ -40,28 +40,23 @@ This API implements several SQL optimization techniques:
 
 ### Using Docker
 
-1. Build the Docker image:
+1. Build the Docker image & run the container:
    ```
-   docker build -t subscription-api .
-   ```
-
-2. Run the container:
-   ```
-   docker run -p 5000:5000 subscription-api
+   docker build -f Dockerfile -t getclue/subly:latest . && docker run -p 5020:5000 --env FLASK_APP=subly --env FLASK_ENV=development --env JWT_ACCESS_TOKEN_EXPIRES=3600 --env JWT_SECRET_KEY=secret --env SQLALCHEMY_DATABASE_URI=mysql+pymysql://username:password@db_host/db_name --env DEBUG=0 --name subly-app getclue/subly:latest 
    ```
 
-3. The API will be available at `http://localhost:5000`
+2. The API will be available at `http://localhost:5020`
 
 ### Using Virtual Environment
 
 1. Create a virtual environment:
    ```
-   python -m venv venv
+   python -m venv .venv
    ```
 
 2. Activate the virtual environment:
-   - On Windows: `venv\Scripts\activate`
-   - On Unix/MacOS: `source venv/bin/activate`
+   - On Windows: `.venv\Scripts\activate`
+   - On Unix/MacOS: `source .venv/bin/activate`
 
 3. Install dependencies:
    ```
@@ -70,7 +65,7 @@ This API implements several SQL optimization techniques:
 
 4. Run the application:
    ```
-   flask run
+   flask --app subly run --debug
    ```
 
 5. The API will be available at `http://localhost:5000`
@@ -118,7 +113,7 @@ subscription = UserSubscription.query.filter_by(
     is_active=True
 ).filter(
     (UserSubscription.end_date == None) | 
-    (UserSubscription.end_date > datetime.utcnow())
+    (UserSubscription.end_date > datetime.now(timezone.utc))
 ).first()
 ```
 

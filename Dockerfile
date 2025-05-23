@@ -7,15 +7,17 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+# Copy the entrypoint script
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 # Create instance directory for SQLite database
 RUN mkdir -p instance
 
-# Set environment variables
 ENV FLASK_APP=subly
 ENV FLASK_ENV=production
 
-# Expose port for the application
 EXPOSE 5000
 
-# Command to run the application
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "main:app"]
+# Use the entrypoint script
+ENTRYPOINT ["/entrypoint.sh"]

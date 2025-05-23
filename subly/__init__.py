@@ -5,9 +5,6 @@ the Flask application, configures it, and registers blueprints.
 """
 
 import os
-
-import logging
-from logging.handlers import RotatingFileHandler
 from flask import Flask
 from dotenv import load_dotenv
 
@@ -15,10 +12,10 @@ from dotenv import load_dotenv
 from subly.routes import auth_bp, subscription_bp
 
 # Initialize subscription plans if they don't exist
-from subly.utils import init_subscription_plans
+from subly.utils import create_admin_user, init_subscription_plans
 
 # Import initialized SQLAlchemy & JWTManager instances
-from subly.extensions import db, jwt
+from subly.extensions import db, jwt, migrate
 
 load_dotenv()
 
@@ -52,16 +49,24 @@ def create_app(test_config=None):
     except OSError:
         pass
 
-    # Initialize SQLAlchemy with app
+    # Initialize app with extensions
     db.init_app(app)
     jwt.init_app(app)
+    migrate.init_app(app, db)
 
+    # Register blueprints
     app.register_blueprint(auth_bp)
     app.register_blueprint(subscription_bp)
 
-    # Create tables
-    with app.app_context():
-        db.create_all()
-        init_subscription_plans()
+    # Seed subscription plans table
+    @app.cli.command("db-seed")
+    def seed_database():
+        """Seed the database with initial data."""
+        try:
+            init_subscription_plans()
+            create_admin_user()
+            app.logger.info("✅ Database seeded with initial data.")
+        except Exception as e:
+            app.logger.error("❌ Failed to initialize subscription plans: %s", e)
 
     return app

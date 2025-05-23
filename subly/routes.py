@@ -14,8 +14,14 @@ from sqlalchemy import text
 
 from subly.extensions import db
 from subly.models import User, SubscriptionPlan, UserSubscription
-from subly.schemas import LoginSchema, RegisterSchema, SubscriptionPlanSchema
+from subly.schemas import (
+    LoginSchema,
+    RegisterSchema,
+    SubscriptionPlanSchema,
+    CreatePlanSchema,
+)
 from subly.logger import get_logger
+from subly.utils import admin_required
 
 logger = get_logger()
 
@@ -86,7 +92,9 @@ def login():
             return jsonify({"error": "Invalid username or password"}), 401
 
         # Create access token
-        access_token = create_access_token(identity=str(user.id))
+        access_token = create_access_token(
+            identity=str(user.id), additional_claims={"role": user.role}
+        )
 
         return (
             jsonify(
@@ -137,6 +145,7 @@ def get_plans():
 
 @subscription_bp.route("/plans", methods=["POST"])
 @jwt_required()
+@admin_required
 def create_plan():
     """Create a new subscription plan (admin only)"""
     # In a real app, you would add admin checks here
@@ -144,12 +153,16 @@ def create_plan():
         data = request.get_json()
 
         # Validate input data
-        schema = SubscriptionPlanSchema()
+        schema = CreatePlanSchema()
         errors = schema.validate(data)
 
         if errors:
             return jsonify({"errors": errors}), 400
+        # Check if plan already exists
+        if SubscriptionPlan.query.filter_by(name=data["name"]).first():
+            return jsonify({"error": "Plan with this name already exists"}), 409
 
+        # Create new plan
         plan = SubscriptionPlan(
             name=data.get("name"),
             price=data.get("price"),
@@ -173,7 +186,7 @@ def create_plan():
         )
     except Exception as e:
         logger.error("Database error creating plan: %s", e)
-        return jsonify({"error": "Internal server error"}), 500
+        return jsonify({"error": "Plan with this name already exists"}), 409
 
 
 @subscription_bp.route("/subscribe", methods=["POST"])

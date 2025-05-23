@@ -45,3 +45,12 @@ class SubscriptionPlanSchema(Schema):
 
     duration = fields.Int(required=True)  # Duration in months
     plan_id = fields.Int(required=True)
+
+
+class CreatePlanSchema(Schema):
+    """Schema for creating a new subscription plan."""
+
+    name = fields.Str(required=True, validate=validate.Length(min=1, max=64))
+    price = fields.Float(required=True)
+    description = fields.Str(required=True)
+    features = fields.Str(required=True)
