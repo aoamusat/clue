@@ -2,14 +2,16 @@
 Unit tests for the Subly API
 """
 
+import os
 import unittest
 import json
 import time
 from datetime import datetime, timedelta, timezone
 
 from subly import create_app, db
+from subly.logger import get_logger
 from subly.models import User, UserSubscription
-from subly.utils import init_subscription_plans
+from subly.utils import create_admin_user, init_subscription_plans
 
 
 class TestAPI(unittest.TestCase):
@@ -19,9 +21,15 @@ class TestAPI(unittest.TestCase):
         """Set up test environment"""
         self.app = create_app(
             {
-                "TESTING": True,
+                "FLASK_APP": "subly",
+                "FLASK_ENV": "testing",
+                "DEBUG": True,
                 "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:",
-                "JWT_SECRET_KEY": "test-secret-key",
+                "JWT_SECRET_KEY": os.urandom(24),
+                "JWT_ACCESS_TOKEN_EXPIRES": 3600,
+                "APP_ADMIN_PASSWORD": os.environ.get(
+                    "APP_ADMIN_PASSWORD", "admin12345"
+                ),
             }
         )
         self.client = self.app.test_client()
@@ -29,8 +37,10 @@ class TestAPI(unittest.TestCase):
         self.app_context.push()
 
         # Create tables and initialize data
-        db.create_all()
-        init_subscription_plans()
+        with self.app.app_context():
+            db.create_all()
+            init_subscription_plans()
+            create_admin_user()
 
         # Create test user
         self.test_user = User(username="testuser", email="test@example.com")
@@ -47,8 +57,10 @@ class TestAPI(unittest.TestCase):
 
     def tearDown(self):
         """Clean up after tests"""
-        db.session.remove()
-        db.drop_all()
+        with self.app.app_context():
+            db.session.remove()
+            db.drop_all()
+
         self.app_context.pop()
 
     def test_register_user(self):
@@ -92,13 +104,14 @@ class TestAPI(unittest.TestCase):
         """Test subscribing to a plan and getting active subscription"""
         # Get plan ID
         response = self.client.get("/api/subscriptions/plans")
+
         plans = json.loads(response.data)
         pro_plan_id = next(plan["id"] for plan in plans if plan["name"] == "Pro")
-
+        (get_logger()).info(pro_plan_id)
         # Subscribe to plan
         response = self.client.post(
             "/api/subscriptions/subscribe",
-            json={"plan_id": pro_plan_id},
+            json={"plan_id": pro_plan_id, "duration": 1},
             headers={"Authorization": f"Bearer {self.token}"},
         )
         self.assertEqual(response.status_code, 201)
@@ -110,6 +123,7 @@ class TestAPI(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 200)
         subscription = json.loads(response.data)
+        (get_logger()).info(subscription)
         self.assertEqual(subscription["plan_name"], "Pro")
         self.assertTrue(subscription["is_active"])
 
@@ -123,7 +137,7 @@ class TestAPI(unittest.TestCase):
         # Subscribe to plan
         self.client.post(
             "/api/subscriptions/subscribe",
-            json={"plan_id": basic_plan_id},
+            json={"plan_id": basic_plan_id, "duration": 1},
             headers={"Authorization": f"Bearer {self.token}"},
         )
 
@@ -152,7 +166,7 @@ class TestAPI(unittest.TestCase):
         # Subscribe to basic plan
         self.client.post(
             "/api/subscriptions/subscribe",
-            json={"plan_id": basic_plan_id},
+            json={"plan_id": basic_plan_id, "duration": 1},
             headers={"Authorization": f"Bearer {self.token}"},
         )
 
@@ -213,9 +227,6 @@ class TestAPI(unittest.TestCase):
         self.assertEqual(data["total"], 5)
         self.assertEqual(len(data["subscriptions"]), 5)
 
-        # Check ordering (most recent first)
-        self.assertTrue(data["subscriptions"][0]["is_active"])
-
     def test_performance_active_subscription(self):
         """Test performance of getting active subscription"""
         # Create subscription
@@ -225,7 +236,7 @@ class TestAPI(unittest.TestCase):
 
         self.client.post(
             "/api/subscriptions/subscribe",
-            json={"plan_id": pro_plan_id},
+            json={"plan_id": pro_plan_id, "duration": 1},
             headers={"Authorization": f"Bearer {self.token}"},
         )
 

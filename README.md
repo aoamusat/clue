@@ -74,12 +74,12 @@ This API implements several SQL optimization techniques:
 
 Run the test suite:
 ```
-pytest tests/
+python -m pytest tests/*
 ```
 
 To run performance tests specifically:
 ```
-python -m tests.test_performance
+python -m pytest tests/test_api.py
 ```
 
 ## API Endpoints

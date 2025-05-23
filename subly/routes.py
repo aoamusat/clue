@@ -277,11 +277,9 @@ def get_active_subscription():
                     "plan_id": subscription.plan_id,
                     "plan_name": subscription.plan_name,
                     "plan_price": subscription.plan_price,
-                    "start_date": subscription.start_date.isoformat(),
+                    "start_date": subscription.start_date,
                     "end_date": (
-                        subscription.end_date.isoformat()
-                        if subscription.end_date
-                        else None
+                        subscription.end_date if subscription.end_date else None
                     ),
                     "is_active": bool(subscription.is_active),
                 }
@@ -313,8 +311,8 @@ def get_subscription_history():
                 "plan_id": sub.plan_id,
                 "plan_name": sub.plan_name,
                 "plan_price": sub.plan_price,
-                "start_date": sub.start_date.isoformat(),
-                "end_date": sub.end_date.isoformat() if sub.end_date else None,
+                "start_date": sub.start_date,
+                "end_date": sub.end_date if sub.end_date else None,
                 "is_active": bool(sub.is_active),
             }
             for sub in subscriptions
